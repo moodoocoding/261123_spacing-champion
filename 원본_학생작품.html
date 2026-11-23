@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>띄어쓰기 1등은 누구?</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js (효과음 생성) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Google Fonts: Jua & Gaegu (칠판 손글씨 감성) -->
+    <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@700&family=Jua&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: #0f172a;
+            background-image: radial-gradient(#1e293b 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
+            user-select: none;
+            overflow-x: hidden;
+        }
+        .chalk-font {
+            font-family: 'Gaegu', 'Jua', cursive;
+        }
+        /* 칠판 프레임 스타일 (기획서 손그림 감성 반영) */
+        .chalkboard {
+            background: linear-gradient(145deg, #1b2822, #121c17);
+            border: 8px solid #78350f;
+            box-shadow: 
+                0 20px 45px rgba(0, 0, 0, 0.75),
+                inset 0 0 30px rgba(0, 0, 0, 0.6);
+        }
+        /* 입체 아케이드 버튼 */
+        .game-btn {
+            transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 5px 0 rgba(0, 0, 0, 0.4);
+        }
+        .game-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 0 rgba(0, 0, 0, 0.4);
+        }
+        .game-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+        }
+        /* 띄어쓰기 V 슬롯 스타일 */
+        .v-slot {
+            transition: all 0.15s ease;
+        }
+        .v-slot:hover {
+            transform: scale(1.15);
+        }
+        .v-slot.active {
+            background-color: #facc15;
+            color: #0f172a;
+            border-color: #fef08a;
+            transform: translateY(-4px) scale(1.12);
+            box-shadow: 0 4px 12px rgba(250, 204, 21, 0.5);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.75); opacity: 0; }
+            70% { transform: scale(1.06); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes coinSpin {
+            0% { transform: rotateY(0deg) scale(0.8); }
+            50% { transform: rotateY(180deg) scale(1.15); }
+            100% { transform: rotateY(360deg) scale(1); }
+        }
+        .animate-coin {
+            animation: coinSpin 0.6s ease-out forwards;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+        .animate-shake {
+            animation: shake 0.35s ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-3 sm:p-6 text-white">
+
+    <!-- 메인 칠판 컨테이너 -->
+    <main class="chalkboard w-full max-w-3xl rounded-3xl p-5 sm:p-8 relative overflow-hidden">
+
+        <!-- =========================================================
+             1화면: 시작 하기 버튼, 인원수 고르기 (1명~4명), 설정/10/20/30문제
+             ========================================================= -->
+        <section id="screen-start" class="flex flex-col items-center text-center animate-pop">
+            <div class="inline-block bg-amber-400/20 border border-amber-300/50 text-amber-200 text-xs sm:text-sm px-3.5 py-1 rounded-full mb-2">
+                ✏️ 맞춤법 퀴즈 배틀
+            </div>
+            <h1 class="chalk-font text-4xl sm:text-6xl text-white drop-shadow mb-6 tracking-wide">
+                띄어쓰기 1등은 누구?
+            </h1>
+
+            <!-- 상단 중앙 [시작] 버튼 (기획서 1화면 상단 타원 버튼 반영) -->
+            <button id="btn-start-game" class="game-btn bg-gradient-to-b from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-bold text-2xl sm:text-4xl px-14 py-3.5 rounded-full border-4 border-amber-200 mb-8 cursor-pointer">
+                시작하기
+            </button>
+
+            <!-- 인원수 고르기 (1명 / 2명 / 3명 / 4명) -->
+            <div class="w-full max-w-xl mb-7">
+                <div class="text-sm sm:text-base text-slate-300 mb-2.5">👥 함께할 인원수를 고르세요</div>
+                <div class="grid grid-cols-4 gap-2.5 sm:gap-4" id="player-count-group">
+                    <button type="button" data-players="1" class="player-opt game-btn py-3 sm:py-4 rounded-2xl border-2 border-slate-400 bg-slate-800/80 text-lg sm:text-2xl cursor-pointer">
+                        1명
+                    </button>
+                    <button type="button" data-players="2" class="player-opt game-btn py-3 sm:py-4 rounded-2xl border-2 border-slate-400 bg-slate-800/80 text-lg sm:text-2xl cursor-pointer">
+                        2명
+                    </button>
+                    <button type="button" data-players="3" class="player-opt game-btn py-3 sm:py-4 rounded-2xl border-2 border-slate-400 bg-slate-800/80 text-lg sm:text-2xl cursor-pointer">
+                        3명
+                    </button>
+                    <button type="button" data-players="4" class="player-opt game-btn py-3 sm:py-4 rounded-2xl border-2 border-slate-400 bg-slate-800/80 text-lg sm:text-2xl cursor-pointer">
+                        4명
+                    </button>
+                </div>
+            </div>
+
+            <!-- 하단 옵션 줄: 설정 / 10문제 / 20문제 / 30문제 (기획서 1화면 하단 원형 버튼들 반영) -->
+            <div class="w-full max-w-xl">
+                <div class="text-sm sm:text-base text-slate-300 mb-2.5">📝 문제 수 & 설정</div>
+                <div class="grid grid-cols-4 gap-2 sm:gap-3.5">
+                    <button type="button" id="btn-open-settings" class="game-btn py-2.5 sm:py-3 rounded-full border-2 border-sky-400 bg-sky-950/80 text-sky-200 text-base sm:text-xl cursor-pointer">
+                        ⚙️ 설정
+                    </button>
+                    <button type="button" data-questions="10" class="question-opt game-btn py-2.5 sm:py-3 rounded-full border-2 border-slate-400 bg-slate-800/80 text-base sm:text-xl cursor-pointer">
+                        10문제
+                    </button>
+                    <button type="button" data-questions="20" class="question-opt game-btn py-2.5 sm:py-3 rounded-full border-2 border-slate-400 bg-slate-800/80 text-base sm:text-xl cursor-pointer">
+                        20문제
+                    </button>
+                    <button type="button" data-questions="30" class="question-opt game-btn py-2.5 sm:py-3 rounded-full border-2 border-slate-400 bg-slate-800/80 text-base sm:text-xl cursor-pointer">
+                        30문제
+                    </button>
+                </div>
+            </div>
+
+            <!-- 현재 선택 요약 안내 -->
+            <p id="start-summary" class="mt-6 text-xs sm:text-sm text-emerald-300 bg-black/40 px-4 py-1.5 rounded-full">
+                선택됨: 1명 플레이 · 총 10문제 · 난이도 보통
+            </p>
+        </section>
+
+        <!-- =========================================================
+             설정 모달 (1화면의 '설정' 버튼 클릭 시 열림)
+             ========================================================= -->
+        <div id="settings-modal" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center p-5 z-30">
+            <div class="bg-slate-900 border-4 border-sky-400 rounded-3xl p-6 max-w-md w-full text-center animate-pop">
+                <h2 class="text-2xl sm:text-3xl text-sky-300 mb-4">⚙️ 게임 설정</h2>
+                
+                <div class="space-y-4 text-left mb-6">
+                    <!-- 난이도 선택 -->
+                    <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700">
+                        <div class="text-sm text-slate-300 mb-2">📚 문제 난이도</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" data-diff="easy" class="diff-opt py-2 rounded-xl border border-amber-400 bg-amber-400 text-slate-950 font-bold text-base cursor-pointer">
+                                쉬움 (초등 기본)
+                            </button>
+                            <button type="button" data-diff="hard" class="diff-opt py-2 rounded-xl border border-slate-600 bg-slate-700 text-slate-200 text-base cursor-pointer">
+                                도전 (헷갈리는 말)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 효과음 켜기/끄기 -->
+                    <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 flex items-center justify-between">
+                        <span class="text-base text-slate-200">🔊 효과음</span>
+                        <button type="button" id="btn-toggle-sound" class="px-4 py-1.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm cursor-pointer">
+                            켜짐 (ON)
+                        </button>
+                    </div>
+                </div>
+
+                <button type="button" id="btn-close-settings" class="game-btn w-full bg-sky-400 hover:bg-sky-300 text-slate-950 font-bold text-xl py-3 rounded-2xl cursor-pointer">
+                    확인
+                </button>
+            </div>
+        </div>
+
+        <!-- =========================================================
+             2화면: 문제가 나오면 맞춘다 (V 표시를 눌러 띄어쓰기 선택)
+             ========================================================= -->
+        <section id="screen-quiz" class="hidden flex flex-col items-center text-center">
+            <!-- 상단 플레이어별 점수판 (1~4명) -->
+            <div id="scoreboard-bar" class="w-full grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
+                <!-- JS로 동적 생성 -->
+            </div>
+
+            <!-- 현재 차례 & 문제 번호 (기획서 2화면 상단 타원 '1문제' 반영) -->
+            <div class="flex flex-wrap items-center justify-center gap-2 mb-5">
+                <span id="turn-badge" class="bg-rose-500 text-white px-4 py-1 rounded-full text-base sm:text-lg shadow">
+                    🎯 1번 참가자 차례!
+                </span>
+                <span id="question-num-badge" class="border-2 border-white/80 bg-white/10 text-white px-5 py-1 rounded-full text-lg sm:text-xl">
+                    1문제 / 10문제
+                </span>
+            </div>
+
+            <!-- 문장 및 글자 사이 'V' 버튼 영역 (기획서 2화면 핵심 UI!) -->
+            <div class="w-full bg-black/35 border-2 border-white/20 rounded-3xl px-3 py-8 sm:py-10 mb-5 flex flex-col items-center justify-center min-h-[190px]">
+                <div id="sentence-board" class="flex flex-wrap items-center justify-center gap-y-4">
+                    <!-- 글자 + V 버튼들이 여기에 생성됨 -->
+                </div>
+            </div>
+
+            <!-- 안내 문구 (기획서 2화면 하단 문구 그대로!) -->
+            <p class="chalk-font text-xl sm:text-2xl text-amber-200 mb-6">
+                "띄어쓰기를 하는 곳(V)을 누르시오"
+            </p>
+
+            <!-- 하단 제출 및 초기화 버튼 -->
+            <div class="flex items-center gap-3 w-full max-w-md">
+                <button type="button" id="btn-clear-v" class="game-btn flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 text-lg sm:text-xl py-3.5 rounded-2xl border-2 border-slate-500 cursor-pointer">
+                    🔄 다시 고르기
+                </button>
+                <button type="button" id="btn-submit-answer" class="game-btn flex-[2] bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-300 hover:to-emerald-500 text-slate-950 font-bold text-xl sm:text-2xl py-3.5 rounded-2xl border-2 border-emerald-200 cursor-pointer">
+                    ✨ 정답 확인!
+                </button>
+            </div>
+        </section>
+
+        <!-- =========================================================
+             3화면 & 4화면: 정답(+1 포인트) / 오답(+0 땡) 결과 피드백 화면
+             ========================================================= -->
+        <section id="screen-feedback" class="hidden flex flex-col items-center justify-center text-center py-4">
+            <!-- 노란 코인 그래픽 (기획서 3, 4화면의 노란 $ 코인 반영) -->
+            <div id="feedback-coin" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-b from-yellow-300 to-amber-500 border-4 border-yellow-100 shadow-[0_0_30px_rgba(250,204,21,0.6)] flex items-center justify-center mb-3">
+                <span class="text-5xl sm:text-6xl font-black text-amber-900">$</span>
+            </div>
+
+            <!-- +1 또는 +0 표시 (기획서 3, 4화면 그대로!) -->
+            <div id="feedback-points" class="text-5xl sm:text-6xl font-black text-yellow-300 mb-2">
+                +1
+            </div>
+
+            <!-- 타원형 [정답] 또는 [땡] 배지 (기획서 3, 4화면 하단 타원 반영) -->
+            <div id="feedback-badge" class="px-10 py-2 rounded-full border-4 border-emerald-300 bg-emerald-500/20 text-emerald-300 text-2xl sm:text-3xl mb-5">
+                정답
+            </div>
+
+            <!-- 올바른 띄어쓰기 정답 문장 보여주기 -->
+            <div class="bg-black/45 border border-white/20 rounded-2xl px-5 py-4 max-w-lg w-full mb-6">
+                <div class="text-xs sm:text-sm text-slate-400 mb-1">📖 올바른 띄어쓰기</div>
+                <div id="correct-sentence-display" class="chalk-font text-2xl sm:text-3xl text-white tracking-wider">
+                    나는 일기를 쓴다
+                </div>
+                <div id="feedback-tip" class="text-xs sm:text-sm text-amber-200/90 mt-2">
+                    조사 '는', '을'은 앞말에 붙여 쓰고 단어 사이는 띄어 써요!
+                </div>
+            </div>
+
+            <button type="button" id="btn-next-question" class="game-btn bg-gradient-to-b from-sky-400 to-blue-600 hover:from-sky-300 hover:to-blue-500 text-white font-bold text-xl sm:text-2xl px-10 py-3.5 rounded-2xl border-2 border-sky-200 cursor-pointer">
+                다음 문제로! ➡️
+            </button>
+        </section>
+
+        <!-- =========================================================
+             최종 결과 화면: 띄어쓰기 1등 발표!
+             ========================================================= -->
+        <section id="screen-result" class="hidden flex flex-col items-center text-center animate-pop">
+            <div class="text-6xl sm:text-7xl mb-2">👑🏆🎉</div>
+            <h2 id="winner-headline" class="chalk-font text-4xl sm:text-5xl text-amber-300 mb-2">
+                띄어쓰기 1등은 1번 참가자!
+            </h2>
+            <p class="text-sm sm:text-base text-slate-300 mb-6">
+                모든 문제를 다 풀었습니다! 최종 점수를 확인해보세요.
+            </p>
+
+            <!-- 순위표 리스트 -->
+            <div id="final-ranking-list" class="w-full max-w-md space-y-2.5 mb-7">
+                <!-- JS로 순위 카드 생성 -->
+            </div>
+
+            <button type="button" id="btn-back-home" class="game-btn bg-gradient-to-b from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-bold text-xl sm:text-2xl px-10 py-3.5 rounded-2xl border-2 border-amber-200 cursor-pointer">
+                🏠 처음 화면으로
+            </button>
+        </section>
+
+    </main>
+
+    <script>
+        /**
+         * 「띄어쓰기 1등은 누구?」 게임 로직
+         * - 기획서 1화면: 시작하기, 인원수(1~4명), 설정/10문제/20문제/30문제
+         * - 기획서 2화면: 글자 위 'V' 버튼을 눌러 띄어쓰기 위치 선택
+         * - 기획서 3화면: 정답 시 노란 코인 +1 & [정답] 표시
+         * - 기획서 4화면: 오답 시 코인 +0 & [땡] 표시
+         */
+
+        // ==========================================
+        // 1. 맞춤법 띄어쓰기 문제 은행 (쉬움 & 도전 난이도 총 35문항)
+        // ==========================================
+        const QUESTION_BANK = [
+            // [쉬움: 초등 기본 문장]
+            { answer: "나는 일기를 쓴다", diff: "easy", tip: "조사 '는', '을'은 앞말에 붙여 쓰고 단어 사이는 띄어 써요!" },
+            { answer: "오늘 날씨가 참 좋다", diff: "easy", tip: "'오늘 / 날씨가 / 참 / 좋다'처럼 각 단어마다 띄어 써요!" },
+            { answer: "학교에 일찍 갔다", diff: "easy", tip: "조사 '에'는 '학교'에 붙여 쓰고, '일찍'과 '갔다'는 띄어 써요!" },
+            { answer: "동생과 함께 놀았다", diff: "easy", tip: "조사 '과'는 '동생'에 붙여 쓰고 '함께'는 띄어 써요!" },
+            { answer: "맛있는 사과를 먹었다", diff: "easy", tip: "꾸며주는 말 '맛있는'과 '사과를'은 띄어 써요!" },
+            { answer: "하늘에 구름이 떠 있다", diff: "easy", tip: "본용언 '떠'와 보조용언 '있다'는 띄어 쓰는 것이 원칙이에요!" },
+            { answer: "친구가 내 이름을 불렀다", diff: "easy", tip: "'친구가 / 내 / 이름을 / 불렀다'로 띄어 써요!" },
+            { answer: "우리는 모두 친구다", diff: "easy", tip: "조사 '는'은 붙여 쓰고 '모두'와 '친구다'는 띄어 써요!" },
+            { answer: "책을 열심히 읽자", diff: "easy", tip: "조사 '을'은 '책'에 붙여 쓰고 '열심히', '읽자'를 띄어 써요!" },
+            { answer: "강아지가 꼬리를 흔든다", diff: "easy", tip: "조사 '가', '를'은 앞말에 꼭 붙여 써요!" },
+            { answer: "엄마가 밥을 지으신다", diff: "easy", tip: "'엄마가 / 밥을 / 지으신다'처럼 주어와 목적어를 띄어 써요!" },
+            { answer: "공원에는 꽃이 많이 피었다", diff: "easy", tip: "'공원에는'처럼 조사가 겹쳐도 앞말에 붙여 써요!" },
+            { answer: "내일은 소풍을 가는 날이다", diff: "easy", tip: "'내일은 / 소풍을 / 가는 / 날이다'로 띄어 써요!" },
+            { answer: "바다에서 수영을 했다", diff: "easy", tip: "조사 '에서'와 '을'은 앞말에 붙여 써요!" },
+            { answer: "선생님께 인사를 드렸다", diff: "easy", tip: "조사 '께', '를'은 앞말에 붙여 쓰고 단어 사이는 띄어 써요!" },
+            { answer: "달팽이가 느리게 기어간다", diff: "easy", tip: "'기어간다'는 한 단어(합성동사)라서 붙여 써요!" },
+            { answer: "별이 반짝반짝 빛난다", diff: "easy", tip: "흉내 내는 말 '반짝반짝'은 하나의 부사이므로 붙여 써요!" },
+            { answer: "나는 커서 과학자가 될래요", diff: "easy", tip: "'나는 / 커서 / 과학자가 / 될래요'로 띄어 써요!" },
+
+            // [도전: 헷갈리기 쉬운 의존명사 및 띄어쓰기]
+            { answer: "할 수 있다", diff: "hard", tip: "'수'는 의존명사이므로 앞말 '할'과 반드시 띄어 써요!" },
+            { answer: "너밖에 없다", diff: "hard", tip: "'밖에'가 '그것 말고는' 뜻의 조사로 쓰일 때는 앞말에 붙여 써요!" },
+            { answer: "나도 먹을 만큼 먹었다", diff: "hard", tip: "꾸미는 말 뒤의 '만큼'은 의존명사이므로 띄어 써요!" },
+            { answer: "너만큼 나도 잘한다", diff: "hard", tip: "체언('너') 뒤에 붙는 '만큼'은 조사이므로 붙여 써요!" },
+            { answer: "집에 가는 길이다", diff: "hard", tip: "'집에 / 가는 / 길이다'처럼 꾸미는 말과 명사는 띄어 써요!" },
+            { answer: "그럴 리가 없다", diff: "hard", tip: "'리'는 의존명사이므로 '그럴'과 띄어 써야 해요!" },
+            { answer: "열 살이 되었다", diff: "hard", tip: "단위를 나타내는 말('살')은 앞말과 띄어 써요!" },
+            { answer: "사과 한 개만 주세요", diff: "hard", tip: "단위 의존명사 '개'는 띄어 쓰고 조사 '만'은 붙여 써요!" },
+            { answer: "아는 척하지 마라", diff: "hard", tip: "의존명사 '척'은 앞말 '아는'과 띄어 써요!" },
+            { answer: "비가 올 듯하다", diff: "hard", tip: "의존명사 '듯'은 앞말 '올'과 띄어 써요!" },
+            { answer: "만난 지 오래되었다", diff: "hard", tip: "시간의 경과를 나타내는 '지'는 의존명사이므로 띄어 써요!" },
+            { answer: "집에 갈 뿐이다", diff: "hard", tip: "꾸미는 말 뒤의 '뿐'은 의존명사이므로 띄어 써요!" },
+            { answer: "너뿐이야", diff: "hard", tip: "체언('너') 뒤에 붙는 '뿐'은 조사이므로 붙여 써요!" },
+            { answer: "잘못된 점을 고쳤다", diff: "hard", tip: "'잘못되다'는 한 단어이므로 붙여 쓰고 '점을'은 띄어 써요!" },
+            { answer: "한 번 더 해 보자", diff: "hard", tip: "횟수를 나타내는 '한 번'은 띄어 써요!" },
+            { answer: "이번에 꼭 성공하자", diff: "hard", tip: "'이번'은 한 단어이므로 붙여 써요!" },
+            { answer: "먹을 것 좀 주세요", diff: "hard", tip: "의존명사 '것'과 보조사 '좀'은 각각 띄어 써요!" }
+        ];
+
+        // ==========================================
+        // 2. 게임 상태 변수
+        // ==========================================
+        let selectedPlayers = 1;      // 1명 ~ 4명
+        let totalQuestions = 10;      // 10문제, 20문제, 30문제
+        let difficulty = 'easy';      // 'easy' 또는 'hard'
+        let soundEnabled = true;
+
+        let quizQueue = [];           // 출제될 문제 목록
+        let currentQIndex = 0;        // 현재 문제 번호 (0부터 시작)
+        let scores = [];              // 각 플레이어의 점수 배열
+        let selectedSplits = new Set(); // 사용자가 클릭한 V 위치 인덱스 집합
+
+        // ==========================================
+        // 3. 효과음 시스템 (Web Audio API + Tone.js 하이브리드)
+        // ==========================================
+        let audioCtx = null;
+        function getAudioCtx() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    audioCtx = new AudioContextClass();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function initAudio() {
+            getAudioCtx();
+            if (typeof Tone !== 'undefined' && Tone.context && Tone.context.state !== 'running') {
+                Tone.start().catch(() => {});
+            }
+        }
+
+        // 선명한 실로폰/벨 톤 생성 헬퍼 (스마트폰/노트북 스피커에서도 잘 들리는 중음역대)
+        function playToneNote(freq, startTime, duration, waveType = 'triangle', peakGain = 0.25) {
+            const ctx = getAudioCtx();
+            if (!ctx) return;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = waveType;
+            osc.frequency.setValueAtTime(freq, startTime);
+
+            gain.gain.setValueAtTime(0.001, startTime);
+            gain.gain.linearRampToValueAtTime(peakGain, startTime + 0.012);
+            gain.gain.exponentialRampToValueAtTime(0.0008, startTime + duration);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(startTime);
+            osc.stop(startTime + duration + 0.02);
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                const ctx = getAudioCtx();
+                if (!ctx) return;
+                const now = ctx.currentTime;
+
+                if (type === 'click') {
+                    playToneNote(659.25, now, 0.09, 'sine', 0.18); // E5
+                } else if (type === 'v_on') {
+                    playToneNote(783.99, now, 0.09, 'sine', 0.2);  // G5
+                } else if (type === 'v_off') {
+                    playToneNote(523.25, now, 0.09, 'sine', 0.18); // C5
+                } else if (type === 'correct') {
+                    // 딩동댕! 경쾌한 3화음 (+1 코인)
+                    playToneNote(523.25, now, 0.18, 'triangle', 0.25);        // 도 (C5)
+                    playToneNote(659.25, now + 0.1, 0.18, 'triangle', 0.25);  // 미 (E5)
+                    playToneNote(783.99, now + 0.2, 0.35, 'triangle', 0.28);  // 솔 (G5)
+                } else if (type === 'wrong') {
+                    // 퀴즈쇼 실로폰 '땡~!' 효과음 (선명한 금속성 타격음 + 불협화음 잔향)
+                    playToneNote(261.63, now, 0.75, 'triangle', 0.42); // C4 기본음 (어느 스피커든 잘 들림)
+                    playToneNote(277.18, now, 0.75, 'sawtooth', 0.22); // Db4 불협화음 (땡! 느낌 극대화)
+                    playToneNote(523.25, now, 0.25, 'sine', 0.25);     // 옥타브 위 타격 어택음
+                } else if (type === 'fanfare') {
+                    // 최종 1등 축하 멜로디
+                    playToneNote(523.25, now, 0.16, 'triangle', 0.25);
+                    playToneNote(659.25, now + 0.12, 0.16, 'triangle', 0.25);
+                    playToneNote(783.99, now + 0.24, 0.16, 'triangle', 0.25);
+                    playToneNote(1046.50, now + 0.36, 0.5, 'triangle', 0.3);
+                }
+            } catch (e) {}
+        }
+
+        // ==========================================
+        // 4. 1화면 옵션 선택 UI 업데이트
+        // ==========================================
+        const playerButtons = document.querySelectorAll('.player-opt');
+        const questionButtons = document.querySelectorAll('.question-opt');
+        const diffButtons = document.querySelectorAll('.diff-opt');
+        const startSummary = document.getElementById('start-summary');
+
+        function updateStartScreenUI() {
+            // 인원수 버튼 강조 (기획서처럼 선택된 항목 테두리/배경 하이라이트)
+            playerButtons.forEach(btn => {
+                const count = parseInt(btn.dataset.players, 10);
+                if (count === selectedPlayers) {
+                    btn.classList.remove('border-slate-400', 'bg-slate-800/80', 'text-white');
+                    btn.classList.add('border-amber-300', 'bg-amber-400', 'text-slate-950', 'font-bold', 'scale-105');
+                } else {
+                    btn.classList.add('border-slate-400', 'bg-slate-800/80', 'text-white');
+                    btn.classList.remove('border-amber-300', 'bg-amber-400', 'text-slate-950', 'font-bold', 'scale-105');
+                }
+            });
+
+            // 문제 수 버튼 강조
+            questionButtons.forEach(btn => {
+                const q = parseInt(btn.dataset.questions, 10);
+                if (q === totalQuestions) {
+                    btn.classList.remove('border-slate-400', 'bg-slate-800/80', 'text-white');
+                    btn.classList.add('border-emerald-300', 'bg-emerald-400', 'text-slate-950', 'font-bold', 'scale-105');
+                } else {
+                    btn.classList.add('border-slate-400', 'bg-slate-800/80', 'text-white');
+                    btn.classList.remove('border-emerald-300', 'bg-emerald-400', 'text-slate-950', 'font-bold', 'scale-105');
+                }
+            });
+
+            const diffLabel = difficulty === 'easy' ? '쉬움 (초등 기본)' : '도전 (헷갈리는 말)';
+            startSummary.textContent = `선택됨: ${selectedPlayers}명 플레이 · 총 ${totalQuestions}문제 · 난이도 ${diffLabel}`;
+        }
+
+        playerButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedPlayers = parseInt(btn.dataset.players, 10);
+                playSound('click');
+                updateStartScreenUI();
+            });
+        });
+
+        questionButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                totalQuestions = parseInt(btn.dataset.questions, 10);
+                playSound('click');
+                updateStartScreenUI();
+            });
+        });
+
+        // 설정 모달 열기/닫기 및 옵션 처리
+        const settingsModal = document.getElementById('settings-modal');
+        document.getElementById('btn-open-settings').addEventListener('click', () => {
+            playSound('click');
+            settingsModal.classList.remove('hidden');
+        });
+        document.getElementById('btn-close-settings').addEventListener('click', () => {
+            playSound('click');
+            settingsModal.classList.add('hidden');
+            updateStartScreenUI();
+        });
+
+        diffButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                difficulty = btn.dataset.diff;
+                playSound('click');
+                diffButtons.forEach(b => {
+                    if (b.dataset.diff === difficulty) {
+                        b.className = 'diff-opt py-2 rounded-xl border border-amber-400 bg-amber-400 text-slate-950 font-bold text-base cursor-pointer';
+                    } else {
+                        b.className = 'diff-opt py-2 rounded-xl border border-slate-600 bg-slate-700 text-slate-200 text-base cursor-pointer';
+                    }
+                });
+            });
+        });
+
+        const soundBtn = document.getElementById('btn-toggle-sound');
+        soundBtn.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            if (soundEnabled) {
+                soundBtn.textContent = '켜짐 (ON)';
+                soundBtn.className = 'px-4 py-1.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm cursor-pointer';
+                playSound('click');
+            } else {
+                soundBtn.textContent = '꺼짐 (OFF)';
+                soundBtn.className = 'px-4 py-1.5 rounded-xl bg-slate-600 text-slate-200 font-bold text-sm cursor-pointer';
+            }
+        });
+
+        // ==========================================
+        // 5. 문장 파싱 및 문제 출제 로직
+        // ==========================================
+        // 정답 문장("나는 일기를 쓴다")에서 공백 없는 글자 배열과 정답 띄어쓰기 위치 Set 추출
+        function parseSentence(answerStr) {
+            const chars = [];
+            const correctSplits = new Set();
+            let charIndex = 0;
+
+            for (let i = 0; i < answerStr.length; i++) {
+                const ch = answerStr[i];
+                if (ch === ' ') {
+                    // 직전 글자(charIndex - 1) 뒤에 띄어쓰기가 들어가야 함!
+                    if (charIndex > 0) {
+                        correctSplits.add(charIndex - 1);
+                    }
+                } else {
+                    chars.push(ch);
+                    charIndex++;
+                }
+            }
+            return { chars, correctSplits };
+        }
+
+        function buildQuizQueue() {
+            // 선택한 난이도 문제를 우선 배치하고 부족하면 나머지 난이도에서 보충
+            const primary = QUESTION_BANK.filter(q => q.diff === difficulty).sort(() => Math.random() - 0.5);
+            const secondary = QUESTION_BANK.filter(q => q.diff !== difficulty).sort(() => Math.random() - 0.5);
+            const pool = [...primary, ...secondary];
+
+            // 첫 번째 문제는 기획서 2화면 예시인 "나는 일기를 쓴다"가 쉬움 모드일 때 나오도록 배려
+            if (difficulty === 'easy') {
+                const sampleIdx = pool.findIndex(q => q.answer === "나는 일기를 쓴다");
+                if (sampleIdx > 0) {
+                    const [sample] = pool.splice(sampleIdx, 1);
+                    pool.unshift(sample);
+                }
+            }
+
+            quizQueue = pool.slice(0, totalQuestions);
+        }
+
+        // ==========================================
+        // 6. 화면 전환 및 2화면(문제 풀이) 렌더링
+        // ==========================================
+        const screenStart = document.getElementById('screen-start');
+        const screenQuiz = document.getElementById('screen-quiz');
+        const screenFeedback = document.getElementById('screen-feedback');
+        const screenResult = document.getElementById('screen-result');
+
+        function showScreen(target) {
+            [screenStart, screenQuiz, screenFeedback, screenResult].forEach(s => s.classList.add('hidden'));
+            target.classList.remove('hidden');
+        }
+
+        function startNewGame() {
+            initAudio();
+            playSound('click');
+
+            scores = new Array(selectedPlayers).fill(0);
+            currentQIndex = 0;
+            buildQuizQueue();
+            renderQuestion();
+            showScreen(screenQuiz);
+        }
+
+        // 상단 1~4명 점수판 렌더링
+        function renderScoreboard(activePlayerIdx) {
+            const bar = document.getElementById('scoreboard-bar');
+            bar.innerHTML = '';
+
+            // 인원수에 맞춰 그리드 열 조정
+            if (selectedPlayers === 1) {
+                bar.className = 'w-full max-w-xs mx-auto grid grid-cols-1 gap-2 mb-5';
+            } else if (selectedPlayers === 2) {
+                bar.className = 'w-full max-w-md mx-auto grid grid-cols-2 gap-3 mb-5';
+            } else if (selectedPlayers === 3) {
+                bar.className = 'w-full grid grid-cols-3 gap-2 mb-5';
+            } else {
+                bar.className = 'w-full grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5';
+            }
+
+            const playerColors = ['border-rose-400', 'border-sky-400', 'border-emerald-400', 'border-amber-400'];
+
+            for (let p = 0; p < selectedPlayers; p++) {
+                const isTurn = (p === activePlayerIdx);
+                const card = document.createElement('div');
+                card.className = `rounded-2xl px-3 py-2 border-2 flex items-center justify-between transition-all ${
+                    isTurn 
+                        ? `${playerColors[p]} bg-white/15 scale-105 shadow-lg` 
+                        : 'border-slate-600 bg-black/35 opacity-75'
+                }`;
+                card.innerHTML = `
+                    <span class="text-sm sm:text-base font-bold ${isTurn ? 'text-amber-300' : 'text-slate-300'}">
+                        ${selectedPlayers === 1 ? '👤 내 점수' : `👤 ${p + 1}번`}
+                    </span>
+                    <span class="text-lg sm:text-xl font-black text-yellow-300">
+                        🪙 ${scores[p]}
+                    </span>
+                `;
+                bar.appendChild(card);
+            }
+        }
+
+        // 현재 문제 화면 그리기 (기획서 2화면: 글자들 위에 V 표시가 배치됨!)
+        function renderQuestion() {
+            const qData = quizQueue[currentQIndex];
+            const { chars } = parseSentence(qData.answer);
+            selectedSplits.clear();
+
+            const activePlayerIdx = currentQIndex % selectedPlayers;
+            renderScoreboard(activePlayerIdx);
+
+            // 차례 및 문제 번호 배지 업데이트
+            const turnBadge = document.getElementById('turn-badge');
+            if (selectedPlayers === 1) {
+                turnBadge.textContent = '✏️ 도전자 차례!';
+            } else {
+                turnBadge.textContent = `🎯 ${activePlayerIdx + 1}번 참가자 차례!`;
+            }
+            document.getElementById('question-num-badge').textContent = `${currentQIndex + 1}문제 / ${totalQuestions}문제`;
+
+            // 칠판 중앙 문장 + 글자 사이 V 슬롯 생성
+            const board = document.getElementById('sentence-board');
+            board.innerHTML = '';
+
+            chars.forEach((char, idx) => {
+                // 글자 박스
+                const charSpan = document.createElement('span');
+                charSpan.className = 'chalk-font text-4xl sm:text-6xl text-white font-bold px-0.5 sm:px-1 tracking-tight';
+                charSpan.textContent = char;
+                board.appendChild(charSpan);
+
+                // 마지막 글자가 아니면 글자 사이 오른쪽 위쪽에 'V' 버튼 배치!
+                if (idx < chars.length - 1) {
+                    const vBtn = document.createElement('button');
+                    vBtn.type = 'button';
+                    vBtn.dataset.splitIdx = idx;
+                    vBtn.title = '여기를 띄어쓰려면 누르세요';
+                    vBtn.className = 'v-slot -mt-8 sm:-mt-11 mx-0.5 w-7 h-8 sm:w-9 sm:h-10 rounded-xl border-2 border-dashed border-slate-400/80 bg-white/5 text-slate-300 hover:border-amber-300 hover:text-amber-200 flex items-center justify-center text-base sm:text-xl font-black cursor-pointer';
+                    vBtn.textContent = 'V';
+
+                    vBtn.addEventListener('click', () => {
+                        if (selectedSplits.has(idx)) {
+                            selectedSplits.delete(idx);
+                            vBtn.classList.remove('active');
+                            playSound('v_off');
+                        } else {
+                            selectedSplits.add(idx);
+                            vBtn.classList.add('active');
+                            playSound('v_on');
+                        }
+                    });
+
+                    board.appendChild(vBtn);
+                }
+            });
+        }
+
+        // 다시 고르기 (선택한 V 모두 초기화)
+        document.getElementById('btn-clear-v').addEventListener('click', () => {
+            selectedSplits.clear();
+            document.querySelectorAll('.v-slot').forEach(btn => btn.classList.remove('active'));
+            playSound('v_off');
+        });
+
+        // ==========================================
+        // 7. 정답 제출 -> 3화면(+1 정답) 또는 4화면(+0 땡) 전환
+        // ==========================================
+        document.getElementById('btn-submit-answer').addEventListener('click', () => {
+            const qData = quizQueue[currentQIndex];
+            const { correctSplits } = parseSentence(qData.answer);
+
+            // 사용자가 선택한 V 위치들과 실제 정답 위치들이 100% 일치하는지 확인
+            let isCorrect = (selectedSplits.size === correctSplits.size);
+            if (isCorrect) {
+                for (const idx of correctSplits) {
+                    if (!selectedSplits.has(idx)) {
+                        isCorrect = false;
+                        break;
+                    }
+                }
+            }
+
+            const activePlayerIdx = currentQIndex % selectedPlayers;
+            const feedbackCoin = document.getElementById('feedback-coin');
+            const feedbackPoints = document.getElementById('feedback-points');
+            const feedbackBadge = document.getElementById('feedback-badge');
+            const correctDisplay = document.getElementById('correct-sentence-display');
+            const feedbackTip = document.getElementById('feedback-tip');
+
+            // 올바른 띄어쓰기 문장을 V 표시와 함께 보기 좋게 강조
+            correctDisplay.textContent = qData.answer.replace(/ /g, ' ∨ ');
+            feedbackTip.textContent = `💡 ${qData.tip}`;
+
+            // 애니메이션 초기화
+            feedbackCoin.classList.remove('animate-coin', 'animate-shake');
+            void feedbackCoin.offsetWidth;
+
+            if (isCorrect) {
+                // [3화면]: 정답을 맞추면 포인트를 얻는다 (+1 / 정답)
+                scores[activePlayerIdx] += 1;
+                playSound('correct');
+
+                feedbackCoin.classList.add('animate-coin');
+                feedbackPoints.textContent = '+1';
+                feedbackPoints.className = 'text-5xl sm:text-6xl font-black text-yellow-300 mb-2';
+
+                feedbackBadge.textContent = '정답';
+                feedbackBadge.className = 'px-12 py-2 rounded-full border-4 border-emerald-300 bg-emerald-500/25 text-emerald-300 text-2xl sm:text-4xl mb-5';
+            } else {
+                // [4화면]: 틀리면 포인트를 얻지 못 한다 (+0 / 땡)
+                playSound('wrong');
+
+                feedbackCoin.classList.add('animate-shake');
+                feedbackPoints.textContent = '+0';
+                feedbackPoints.className = 'text-5xl sm:text-6xl font-black text-slate-400 mb-2';
+
+                feedbackBadge.textContent = '땡';
+                feedbackBadge.className = 'px-12 py-2 rounded-full border-4 border-rose-400 bg-rose-500/25 text-rose-400 text-2xl sm:text-4xl mb-5';
+            }
+
+            // 마지막 문제인 경우 버튼 문구 변경
+            const nextBtn = document.getElementById('btn-next-question');
+            if (currentQIndex >= totalQuestions - 1) {
+                nextBtn.textContent = '🏆 1등 결과 발표 보기!';
+            } else {
+                nextBtn.textContent = '다음 문제로! ➡️';
+            }
+
+            showScreen(screenFeedback);
+        });
+
+        // 다음 문제로 이동 또는 최종 결과 화면 표시
+        document.getElementById('btn-next-question').addEventListener('click', () => {
+            playSound('click');
+            currentQIndex++;
+            if (currentQIndex < totalQuestions) {
+                renderQuestion();
+                showScreen(screenQuiz);
+            } else {
+                showFinalResults();
+            }
+        });
+
+        // ==========================================
+        // 8. 최종 결과 (띄어쓰기 1등 발표!)
+        // ==========================================
+        function showFinalResults() {
+            playSound('fanfare');
+
+            const ranking = [];
+            for (let p = 0; p < selectedPlayers; p++) {
+                ranking.push({
+                    playerNum: p + 1,
+                    score: scores[p]
+                });
+            }
+            // 점수 높은 순 정렬
+            ranking.sort((a, b) => b.score - a.score);
+
+            const headline = document.getElementById('winner-headline');
+            if (selectedPlayers === 1) {
+                headline.textContent = `총 ${totalQuestions}문제 중 ${scores[0]}점 달성!`;
+            } else {
+                const topScore = ranking[0].score;
+                const winners = ranking.filter(r => r.score === topScore);
+                if (winners.length > 1) {
+                    const names = winners.map(w => `${w.playerNum}번`).join(', ');
+                    headline.textContent = `공동 1등은 ${names} 참가자!`;
+                } else {
+                    headline.textContent = `띄어쓰기 1등은 ${winners[0].playerNum}번 참가자!`;
+                }
+            }
+
+            const listEl = document.getElementById('final-ranking-list');
+            listEl.innerHTML = '';
+
+            ranking.forEach((item, idx) => {
+                const isFirst = (item.score === ranking[0].score);
+                const row = document.createElement('div');
+                row.className = `flex items-center justify-between px-5 py-3.5 rounded-2xl border-2 ${
+                    isFirst 
+                        ? 'border-amber-300 bg-amber-400/20 text-amber-200' 
+                        : 'border-slate-600 bg-black/40 text-slate-200'
+                }`;
+                const medal = isFirst ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : '🎖️'));
+                const nameText = selectedPlayers === 1 ? '도전자' : `${item.playerNum}번 참가자`;
+                row.innerHTML = `
+                    <div class="flex items-center gap-2.5 text-xl sm:text-2xl">
+                        <span>${medal}</span>
+                        <span class="font-bold">${nameText}</span>
+                    </div>
+                    <div class="text-2xl sm:text-3xl font-black text-yellow-300">
+                        🪙 ${item.score}점
+                    </div>
+                `;
+                listEl.appendChild(row);
+            });
+
+            showScreen(screenResult);
+        }
+
+        // 버튼 이벤트 연결
+        document.getElementById('btn-start-game').addEventListener('click', startNewGame);
+        document.getElementById('btn-back-home').addEventListener('click', () => {
+            playSound('click');
+            showScreen(screenStart);
+        });
+
+        // 초기 UI 세팅
+        updateStartScreenUI();
+    </script>
+</body>
+</html>
