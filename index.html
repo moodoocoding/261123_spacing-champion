@@ -64,6 +64,8 @@ section{animation:up .35s ease-out}
 .names .dot{flex:none;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900}
 .names input{flex:1;min-width:0;background:transparent;border:0;outline:0;font-size:18px;font-weight:700;color:var(--ink);padding:4px 0}
 .names input::placeholder{color:#9ca3af;font-weight:500}
+.names label.need{border-color:var(--no);background:var(--no-bg);animation:shake .35s}
+.nameMsg{margin-top:10px;color:var(--no-ink);font-weight:900;font-size:15px;text-align:center}
 .row2{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .pill{display:inline-flex;align-items:center;gap:6px;background:#f3f4f6;border-radius:99px;padding:6px 14px;font-weight:700;font-size:14px;color:var(--sub)}
 .linkbtn{font-weight:700;color:var(--brand);font-size:15px;padding:6px 10px;border-radius:10px}
@@ -235,6 +237,7 @@ section{animation:up .35s ease-out}
         <div class="seg" id="playerOpts"></div>
         <div id="layoutPreview"></div>
         <div class="names" id="names"></div>
+        <p class="nameMsg hide" id="nameMsg">✏️ 랭킹에 올라갈 이름(별명)을 적어 주세요!</p>
       </div>
       <div class="card">
         <div class="row2" style="margin-bottom:12px">
@@ -439,7 +442,7 @@ function renderStart(){
   // 이미 적은 이름이 지워지지 않도록 칸 수가 바뀔 때만 다시 그려요
   if(box.children.length!==nPlayers){
     box.innerHTML = Array.from({length:nPlayers},(_,p)=>`<label><span class="dot" style="background:${COLORS[p]}">${p+1}</span>
-      <input maxlength="8" placeholder="${nPlayers===1?'이름 또는 별명 (랭킹에 올라가요)':'이름 또는 별명'}" value="${esc(names[p])}" oninput="names[${p}]=this.value"></label>`).join('');
+      <input maxlength="8" placeholder="${nPlayers===1?'이름 또는 별명 (랭킹에 올라가요)':'이름 또는 별명'}" value="${esc(names[p])}" oninput="names[${p}]=this.value;if(this.value.trim())this.parentNode.classList.remove('need')" onkeydown="if(event.key==='Enter')startGame()"></label>`).join('');
   }
   $('summary').textContent = `${nPlayers===1?'혼자':nPlayers+'명'} · ${perChoice}문제 · ${diff==='easy'?'쉬움':'도전'}`;
 }
@@ -470,7 +473,19 @@ function show(id){
 }
 
 function startGame(){
-  ctx(); sound('click');
+  ctx();
+  // 랭킹에 올라갈 이름(별명)을 모두 적어야 시작해요
+  const labels = [...$('names').querySelectorAll('label')];
+  const empty = labels.findIndex((l,p)=>!(names[p]||'').trim());
+  labels.forEach((l,p)=>l.classList.toggle('need',!(names[p]||'').trim()));
+  if(empty>=0){
+    $('nameMsg').classList.remove('hide');
+    labels[empty].querySelector('input').focus();
+    labels[empty].scrollIntoView({behavior:'smooth',block:'center'});
+    sound('voff'); return;
+  }
+  $('nameMsg').classList.add('hide');
+  sound('click');
   scores = Array(nPlayers).fill(0); times = Array(nPlayers).fill(0); streak = Array(nPlayers).fill(0); qi = 0;
   const main = shuffle(BANK.filter(q=>q.d===diff)), rest = shuffle(BANK.filter(q=>q.d!==diff));
   const pool = [...main,...rest];
@@ -631,7 +646,9 @@ function fxLoop(){
 //    board.js가 Firebase에 저장해서, 부스의 모든 기기가 같은 랭킹을 봐요.
 //    인터넷이 안 되면 이 기기에 저장했다가 연결되면 올려요.
 // =====================================================
-const Board = createBoard('spacing');
+// board.js를 못 불러와도 게임은 그대로 할 수 있게 빈 랭킹으로 대신해요
+const Board = typeof createBoard==='function' ? createBoard('spacing')
+  : {online:false,user:null,today:()=>[],submit:()=>null,isMine:()=>false,onChange(){},init(){},login(){},remove(){},clearToday(){}};
 let fameView = [];
 function rankSort(a,b){ return (b.c/b.n - a.c/a.n) || (b.c - a.c) || (a.t - b.t) || (a.at - b.at); }
 function fmtTime(ms){ const s = Math.round(ms/1000); return s>=60 ? `${Math.floor(s/60)}분 ${s%60}초` : `${s}초`; }
@@ -699,7 +716,12 @@ function finish(){
   if(renderResultFame()) sound('record');
   for(let i=0;i<5;i++) setTimeout(()=>confetti(innerWidth*(.15+Math.random()*.7),innerHeight*.25,70),i*280);
 }
-function home(){ sound('click'); renderStart(); show('sStart'); }
+function home(){
+  sound('click');
+  // 다음 친구들이 자기 이름을 새로 적도록 이름 칸을 비워요
+  names = ['','','','']; $('names').innerHTML = ''; $('nameMsg').classList.add('hide');
+  renderStart(); show('sStart');
+}
 
 function openFame(){ sound('click'); manage = false; syncManage(); $('mFame').classList.remove('hide'); }
 function closeFame(){ sound('click'); $('mFame').classList.add('hide'); }
